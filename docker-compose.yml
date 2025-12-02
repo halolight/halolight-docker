@@ -1,0 +1,83 @@
+version: "3.9"
+
+services:
+  # HaloLight 应用
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: halolight-app
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL:-postgresql://halolight:password@postgres:5432/halolight}
+      - NEXT_PUBLIC_API_URL=/api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - app-cache:/app/.next/cache
+    networks:
+      - halolight-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.halolight.rule=Host(`localhost`)"
+      - "traefik.http.routers.halolight.entrypoints=web"
+      - "traefik.http.services.halolight.loadbalancer.server.port=3000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # Traefik 反向代理
+  traefik:
+    image: traefik:v3.2
+    container_name: halolight-traefik
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--log.level=INFO"
+    ports:
+      - "80:80"      # HTTP
+      - "8080:8080"  # Traefik Dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik:/etc/traefik:ro
+    restart: unless-stopped
+    networks:
+      - halolight-net
+
+  # PostgreSQL 数据库
+  postgres:
+    image: postgres:17-alpine
+    container_name: halolight-postgres
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-halolight}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
+      - POSTGRES_DB=${POSTGRES_DB:-halolight}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - halolight-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-halolight}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5432:5432"
+
+networks:
+  halolight-net:
+    driver: bridge
+
+volumes:
+  app-cache:
+  postgres-data:

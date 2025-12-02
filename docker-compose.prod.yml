@@ -1,0 +1,108 @@
+version: "3.9"
+
+services:
+  # HaloLight 应用 (生产环境)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: halolight-app
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL:-postgresql://halolight:password@postgres:5432/halolight}
+      - NEXT_PUBLIC_API_URL=/api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - app-cache:/app/.next/cache
+    networks:
+      - halolight-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.halolight.rule=Host(`${HALO_HOST:-halolight.example.com}`)"
+      - "traefik.http.routers.halolight.entrypoints=websecure"
+      - "traefik.http.routers.halolight.tls=true"
+      - "traefik.http.routers.halolight.tls.certresolver=letsencrypt"
+      - "traefik.http.services.halolight.loadbalancer.server.port=3000"
+      # HTTP to HTTPS redirect
+      - "traefik.http.routers.halolight-http.rule=Host(`${HALO_HOST:-halolight.example.com}`)"
+      - "traefik.http.routers.halolight-http.entrypoints=web"
+      - "traefik.http.routers.halolight-http.middlewares=https-redirect"
+      - "traefik.http.middlewares.https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.https-redirect.redirectscheme.permanent=true"
+      # Security headers
+      - "traefik.http.routers.halolight.middlewares=secure-headers"
+      - "traefik.http.middlewares.secure-headers.headers.framedeny=true"
+      - "traefik.http.middlewares.secure-headers.headers.sslredirect=true"
+      - "traefik.http.middlewares.secure-headers.headers.stsincludesubdomains=true"
+      - "traefik.http.middlewares.secure-headers.headers.stspreload=true"
+      - "traefik.http.middlewares.secure-headers.headers.stsseconds=31536000"
+      - "traefik.http.middlewares.secure-headers.headers.contentTypeNosniff=true"
+      - "traefik.http.middlewares.secure-headers.headers.browserXssFilter=true"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # Traefik 反向代理 (生产环境 - HTTPS)
+  traefik:
+    image: traefik:v3.2
+    container_name: halolight-traefik
+    command:
+      - "--api.dashboard=false"  # 生产环境关闭 Dashboard
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:-admin@example.com}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/acme.json"
+      - "--log.level=INFO"
+      - "--accesslog=true"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik:/etc/traefik:ro
+      - traefik-acme:/acme
+    restart: unless-stopped
+    networks:
+      - halolight-net
+
+  # PostgreSQL 数据库 (生产环境)
+  postgres:
+    image: postgres:17-alpine
+    container_name: halolight-postgres
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-halolight}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
+      - POSTGRES_DB=${POSTGRES_DB:-halolight}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      # 自动备份脚本（可选）
+      - ./scripts/backup.sh:/usr/local/bin/backup.sh:ro
+    restart: unless-stopped
+    networks:
+      - halolight-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-halolight}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # 生产环境不暴露 PostgreSQL 端口到主机
+
+networks:
+  halolight-net:
+    driver: bridge
+
+volumes:
+  app-cache:
+  postgres-data:
+  traefik-acme:

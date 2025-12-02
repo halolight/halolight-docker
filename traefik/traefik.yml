@@ -1,0 +1,90 @@
+# Traefik 配置文件
+# 文档: https://doc.traefik.io/traefik/
+
+# 日志配置
+log:
+  level: INFO
+  # format: json  # 生产环境可启用 JSON 格式
+
+# 访问日志
+accessLog:
+  # 可选：输出到文件
+  # filePath: /var/log/traefik/access.log
+  # format: json
+
+# API 和 Dashboard
+api:
+  # 开发环境可启用
+  # dashboard: true
+  # insecure: true  # 允许通过 HTTP 访问 Dashboard (仅开发环境)
+
+# 入口点配置
+entryPoints:
+  web:
+    address: ":80"
+    # 自动跳转到 HTTPS (生产环境)
+    # http:
+    #   redirections:
+    #     entryPoint:
+    #       to: websecure
+    #       scheme: https
+  websecure:
+    address: ":443"
+    # HTTP/3 支持 (可选)
+    # http3: {}
+
+# Provider 配置
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    watch: true
+  file:
+    filename: "/etc/traefik/traefik.yml"
+    watch: true
+
+# Let's Encrypt 证书配置
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: "${ACME_EMAIL:-admin@example.com}"
+      storage: "/acme.json"
+      # TLS Challenge (推荐，需要公网 IP)
+      tlsChallenge: {}
+      # HTTP Challenge (备选方案)
+      # httpChallenge:
+      #   entryPoint: web
+
+# 中间件配置
+http:
+  middlewares:
+    # 安全头
+    secure-headers:
+      headers:
+        frameDeny: true
+        sslRedirect: true
+        stsSeconds: 63072000  # 2 年
+        stsIncludeSubdomains: true
+        stsPreload: true
+        referrerPolicy: "strict-origin-when-cross-origin"
+        contentTypeNosniff: true
+        browserXssFilter: true
+        customFrameOptionsValue: "SAMEORIGIN"
+        # Content Security Policy (按需启用)
+        # contentSecurityPolicy: "default-src 'self'"
+
+    # HTTPS 重定向
+    https-redirect:
+      redirectScheme:
+        scheme: https
+        permanent: true
+
+    # 速率限制 (可选)
+    # rate-limit:
+    #   rateLimit:
+    #     average: 100
+    #     burst: 50
+
+    # 压缩 (可选)
+    # compress:
+    #   compress: {}

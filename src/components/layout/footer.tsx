@@ -36,6 +36,14 @@ export function Footer() {
 
           {/* 链接 */}
           <div className="flex items-center gap-3 text-xs">
+            <a
+              href="https://halolight.docs.h7ml.cn"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-primary transition-colors"
+            >
+              📚 文档
+            </a>
             <Link
               href="/privacy"
               className="hover:text-primary transition-colors"

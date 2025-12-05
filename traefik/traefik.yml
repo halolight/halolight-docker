@@ -47,7 +47,7 @@ providers:
 certificatesResolvers:
   letsencrypt:
     acme:
-      email: "${ACME_EMAIL:-admin@example.com}"
+      email: "${ACME_EMAIL:-admin@halolight.h7ml.cn}"
       storage: "/acme.json"
       # TLS Challenge (推荐，需要公网 IP)
       tlsChallenge: {}

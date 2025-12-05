@@ -60,7 +60,7 @@ services:
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
       - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
-      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:-admin@example.com}"
+      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:-admin@halolight.h7ml.cn}"
       - "--certificatesresolvers.letsencrypt.acme.storage=/acme.json"
       - "--log.level=INFO"
       - "--accesslog=true"

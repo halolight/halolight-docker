@@ -74,7 +74,7 @@ DB_PASSWORD=your-secure-password
 
 # Traefik
 DOMAIN=halolight.example.com
-ACME_EMAIL=admin@example.com
+ACME_EMAIL=admin@halolight.h7ml.cn
 ```
 
 ## 生产部署检查清单

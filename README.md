@@ -149,7 +149,7 @@ entryPoints:
 certificatesResolvers:
   letsencrypt:
     acme:
-      email: admin@example.com
+      email: admin@halolight.h7ml.cn
       storage: /etc/traefik/acme.json
       httpChallenge:
         entryPoint: web
@@ -174,7 +174,7 @@ healthcheck:
 ## 相关链接
 
 - [HaloLight 文档](https://halolight.docs.h7ml.cn)
-- [Docker 文档](https://docs.docker.com/)
+- [Docker 文档](https:/docs.docker.com/)
 - [Traefik 文档](https://doc.traefik.io/traefik/)
 
 ## 许可证
